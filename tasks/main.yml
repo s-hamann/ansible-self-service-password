@@ -1,0 +1,66 @@
+---
+- name: 'install required packages'
+  package:
+    name: tar
+    state: present
+
+- block:
+  - name: 'get available versions of Self Service Password'
+    uri:
+      url: 'https://ltb-project.org/archives/'
+      return_content: true
+    register: _ltb_downloads
+
+  - name: 'determine latest version of Self Service Password'
+    set_fact:
+      ssp_version: "{{ _ltb_downloads.content | regex_findall('(?<=ltb-project-self-service-password-)[0-9.]+(?=\\.tar\\.gz)') | sort_versions | last }}"
+
+  when: "ssp_version is not defined"
+
+- name: 'create installation directory'
+  file:
+    path: "{{ ssp_web_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: 'check if Self Service Password is already configured'
+  stat:
+    path: "{{ ssp_web_root }}/conf/config.inc.local.php"
+  register: _stat_config
+
+- name: 'read current config file'
+  slurp:
+    src:  "{{ ssp_web_root }}/conf/config.inc.local.php"
+  register: _slurp_config
+  when: "_stat_config.stat.exists"
+
+- name: 'extract version information from the current config file'
+  set_fact:
+    _current_ssp_version: "{{ _slurp_config.content | b64decode | regex_search('(?<=# configuration for Self Service Password version )[0-9.]+') }}"
+  when: "_stat_config.stat.exists"
+
+- name: 'extract keyphrase from current config file'
+  set_fact:
+    _keyphrase: "{{ _slurp_config.content | b64decode | regex_search('(?<=\\$keyphrase\\s=\\s.).*(?=.;)') }}"
+  when: "_stat_config.stat.exists"
+
+- name: 'download and install Self Service Password'
+  unarchive:
+    src: "https://ltb-project.org/archives/ltb-project-self-service-password-{{ ssp_version }}.tar.gz"
+    dest: "{{ ssp_web_root }}"
+    remote_src: true
+    extra_opts: '--strip-components=1'
+    owner: root
+    group: root
+  notify: ssp_installed_or_updated
+  when: "ssp_version != _current_ssp_version | default('none')"
+
+- name: 'configure Self Service Password'
+  template:
+    dest: "{{ ssp_web_root }}/conf/config.inc.local.php"
+    src: 'config.php.j2'
+    owner: root
+    group: "{{ ssp_web_server_group }}"
+    mode: 0640

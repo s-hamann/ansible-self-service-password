@@ -1,0 +1,132 @@
+<?php
+{# vim: filetype=php.jinja2 #}
+# {{ ansible_managed }}
+# configuration for Self Service Password version {{ ssp_version }}
+
+# connection to the LDAP server
+$ldap_url = '{{ [ssp_ldap_url] | flatten | join(' ') }}';
+$ldap_starttls = {{ ssp_ldap_starttls | bool }};
+{% if ssp_ldap_bind_dn is defined %}
+$ldap_binddn = '{{ ssp_ldap_bind_dn }}';
+$ldap_bindpw = '{{ ssp_ldap_bind_password }}';
+{% else %}
+$ldap_binddn = null;
+$ldap_bindpw = null;
+{% endif %}
+# LDAP search base and filter for user accounts
+$ldap_base = '{{ ssp_ldap_base }}';
+$ldap_filter = '{{ ssp_ldap_filter }}';
+$ldap_fullname_attribute = '{{ ssp_display_name_attribute }}';
+$mail_attribute = '{{ ssp_mail_attribute }}';
+$sms_attribute = '{{ ssp_mobile_attribute }}';
+$change_sshkey_attribute = '{{ ssp_sshkey_attribute }}';
+# have the user change the password, not SSP's own account above
+$who_change_password = 'user';
+
+$ad_mode = {{ ssp_ad_mode | bool }};
+$samba_mode = {{ ssp_samba_mode | bool }};
+
+{% if ssp_hash_passwords | bool %}
+# hash passwords using SHA-512 crypt before sending them to the directory
+$hash = 'CRYPT';
+$hash_options['crypt_salt_prefix'] = '$6$';
+$hash_options['crypt_salt_length'] = '16';
+{% else %}
+# send unhashed passwords to the directory
+$hash = 'clear';
+{% endif %}
+
+# do not allow the user name as the password
+$pwd_diff_login = True;
+{% if ssp_password_length is defined %}
+# require at least {{ ssp_password_length }} characters
+$pwd_min_length = {{ ssp_password_length }};
+{% endif %}
+# do not set a maximum length
+$pwd_max_length = 0;
+{% if ssp_password_complexity is defined %}
+# require {{ ssp_password_complexity }} character classes
+$pwd_complexity = {{ ssp_password_complexity }};
+# do not accept special characters solely as the first or last character
+$pwd_no_special_at_ends = true;
+{% endif %}
+# {{ ssp_check_pwned | bool | ternary('', 'do not ') }}check if the password is in any public leaks
+$use_pwnedpasswords = {{ ssp_check_pwned | bool }};
+# show the password policy if the user tries a 'weak' password
+$pwd_show_policy = 'onerror';
+
+# only accept alphanumeric characters in user names
+$login_forbidden_chars = False;
+
+{% if ssp_notify_user | bool %}
+{% set _needs_email_config = true %}
+# notify users when their password is changed
+$notify_on_change = True;
+{% else %}
+# disable email notification on password change
+$notify_on_change = False;
+{% endif %}
+
+{% if ssp_change_sshkey | bool %}
+# allow changing SSH keys
+$change_sshkey = True;
+$who_change_sshkey = 'user';
+$notify_on_sshkey_change = {{ ssp_notify_user | bool }};
+{% else %}
+# do not handle SSH keys
+$change_sshkey = False;
+{% endif %}
+
+{% if ssp_reset_email | bool %}
+{% set _needs_email_config = true %}
+# enable reset by email
+$use_tokens = True;
+$token_lifetime = {{ ssp_reset_email_lifetime }};
+# do not ask the user for an email address; use the first one found in LDAP
+$mail_address_use_ldap = True;
+# use sendmail, not smtp
+$mail_protocol = 'sendmail';
+# log errors, do not display them
+$mail_debug_output = 'error_log';
+# do not set a priority header
+$mail_priority = null;
+{% else %}
+# disable reset by email
+$use_tokens = False;
+{% endif %}
+
+{% if ssp_reset_sms | bool %}
+# enable reset by SMS
+$use_sms = True;
+$sms_method = {{ ssp_send_sms_method }};
+{% if ssp_send_sms_method == 'mail' %}
+{% set _needs_email_config = true %}
+$smsmailto = '{{ ssp_sms_mail_provider }}';
+$smsmail_subject = '{{ ssp_sms_mail_subject }}';
+{% elif ssp_send_sms_method == 'api' %}
+$sms_api_lib = 'lib/smsapi-{{ ssp_sms_api }}.inc.php';
+{% for key, value in ssp_sms_api_config.items() %}
+${{ key }} = {{ value }};
+{% endfor %}
+{% endif %}
+{% else %}
+# disable reset by SMS
+$use_sms = False;
+{% endif %}
+
+# disable reset by questions, they are inherently weak
+$use_questions = False;
+$crypt_answers = False;
+
+{% if _needs_email_config | default(false) %}
+# email configuration
+$mail_from = '{{ ssp_email_from }}';
+{% if ssp_email_name is defined %}
+$mail_from_name = '{{ ssp_reset_email_name }}';
+{% endif %}
+{% endif %}
+
+{% if ssp_reset_email | bool or ssp_reset_sms | bool %}
+$crypt_tokens = True;
+$keyphrase = '{{ _keyphrase | default(false) or lookup('password', '/dev/null length=32') }}';
+{% endif %}

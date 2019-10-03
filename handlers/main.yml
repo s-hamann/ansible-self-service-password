@@ -1,0 +1,7 @@
+---
+# This handler is a stand-in for the case where no external handlers listen for ssp_installed_or_updated
+- name: 'dummy handler'
+  debug:
+    msg: 'this handler never runs'
+  listen: ssp_installed_or_updated
+  when: false
