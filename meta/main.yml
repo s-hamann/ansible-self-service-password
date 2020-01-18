@@ -1,0 +1,31 @@
+galaxy_info:
+  author: Sebastian Hamann
+  description: Sets up the LTB Self Service Password web application
+
+  license: MIT
+
+  min_ansible_version: 2.5
+
+  platforms:
+    - name: Gentoo
+      versions:
+        - any
+    - name: Debian
+      versions:
+        - buster
+    - name: Alpine
+      versions:
+        - any
+    - name: GenericLinux
+      versions:
+        - any
+    - name: GenericUNIX
+      versions:
+        - any
+
+  galaxy_tags:
+    - ldap
+    - web
+    - selfservicepassword
+
+dependencies: []
