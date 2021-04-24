@@ -1,0 +1,2 @@
+ssp_smarty_pkg: smarty3
+ssp_smarty_include_path: '/usr/share/php/smarty3/Smarty.class.php'

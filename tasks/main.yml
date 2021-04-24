@@ -1,4 +1,16 @@
 ---
+- name: 'gather os specific variables'
+  include_vars: "{{ vars_file }}"
+  loop:
+    - 'default.yml'
+    - "{{ ansible_facts['os_family'] | lower }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_major_version'] }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_version'] }}.yml"
+  loop_control:
+    loop_var: vars_file
+  when: "(vars_file is abs and vars_file is file) or (vars_file is not abs and (role_path ~ '/vars/' ~ vars_file) is file)"
+
 - name: 'install required packages'
   package:
     name: tar
@@ -16,6 +28,62 @@
       ssp_version: "{{ _ltb_downloads.content | regex_findall('(?<=ltb-project-self-service-password-)[0-9.]+(?=\\.tar\\.gz)') | sort_versions | last }}"
 
   when: "ssp_version is not defined"
+
+- name: 'install Smarty package'
+  package:
+    name: "{{ ssp_smarty_pkg }}"
+    state: present
+  when: "ssp_version is version('1.4', '>=') and ssp_smarty_pkg is defined"
+
+- block:
+
+  - name: 'get latest version of Smarty'
+    uri:
+      url: 'https://api.github.com/repos/smarty-php/smarty/releases?per_page=1'
+      headers:
+        Accept: 'application/vnd.github.v3+json'
+      return_content: true
+    register: _smarty_release_info
+
+  - name: 'set Smarty include path'
+    set_fact:
+      ssp_smarty_include_path: "{{ ssp_smarty_path | regex_replace('\\/$', '') }}/libs/Smarty.class.php"
+
+  - name: 'check if Smarty is already installed'
+    stat:
+      path: "{{ ssp_smarty_include_path }}"
+    register: _stat_smarty
+
+  - name: 'read Smarty'
+    slurp:
+      src:  "{{ ssp_smarty_include_path }}"
+    register: _slurp_smarty
+    when: "_stat_smarty.stat.exists"
+
+  - name: 'determine currently installed Smarty version'
+    set_fact:
+      _current_smarty_version: "{{ _slurp_smarty.content | b64decode | regex_search('(?<=SMARTY_VERSION = .)[0-9.]+') }}"
+    when: "_stat_smarty.stat.exists"
+
+  - name: 'create Smarty installation directory'
+    file:
+      path: "{{ ssp_smarty_path }}"
+      state: directory
+      owner: root
+      group: root
+      mode: 0755
+
+  - name: 'download and install Smarty'
+    unarchive:
+      src: "{{ (_smarty_release_info['json'] | first)['tarball_url'] }}"
+      dest: "{{ ssp_smarty_path }}"
+      remote_src: true
+      extra_opts: '--strip-components=1'
+      owner: root
+      group: root
+    when: "'v' ~ (_current_smarty_version | default('')) != (_smarty_release_info['json'] | first)['tag_name']"
+
+  when: "ssp_version is version('1.4', '>=') and ssp_smarty_pkg is not defined"
 
 - name: 'create installation directory'
   file:
@@ -56,6 +124,14 @@
     group: root
   notify: ssp_installed_or_updated
   when: "ssp_version != _current_ssp_version | default('none')"
+
+- name: 'make directory for Smarty compiled templates writable'
+  file:
+    path: "{{ ssp_web_root }}/templates_c"
+    state: directory
+    owner: root
+    group: "{{ ssp_web_server_group }}"
+    mode: 0770
 
 - name: 'configure Self Service Password'
   template:

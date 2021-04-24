@@ -70,17 +70,31 @@ Role Variables
 * `ssp_change_sshkey`  
   Enable support for changing SSH keys via Self Service Password.
   Defaults to `false`.
+* `ssp_use_exop`  
+  Whether to use the LDAP password change extended operation instead of just setting the password attribute.
+  This allows for further password policy checks done by the LDAP server.
+  Defaults to `false`.
 * `ssp_hash_passwords`  
   Set to `true` to pass hashed passwords to the LDAP directory.
   Set to `false` to pass clear text passwords and let the directory handle hashing.
   The latter is required for a directory-side password policy to work.
   Defaults to `false`.
+  Ignored if `ssp_use_exop` is `true`.
 * `ssp_password_length`  
   Password minimal length requirement.
   Optional.
+* `ssp_min_diff`  
+  Minimum number of characters that need to be different from the old passwords.
+  Defaults to `0`;
 * `ssp_password_complexity`  
   The number of character classes required for new passwords.
   Sensible values are `2`, `3` or `4`.
+  Optional.
+* `ssp_forbidden_words`  
+  A list of words that may not be used in passwords.
+  Optional.
+* `ssp_forbidden_fields`  
+  A list of LDAP fields on the user entry whose values may not be used in the password of the same user.
   Optional.
 * `ssp_check_pwned`  
   Check passwords against publicly known password leaks using the https://haveibeenpwned.com/ API.
@@ -123,6 +137,12 @@ Role Variables
   A dictionary containing further configuration for the SMS API.
   Note that string values require additional quotes (for YAML and PHP).
   Usually mandatory if `ssp_send_sms_method` is `api`, ignored otherwise.
+* `ssp_smarty_path`  
+  As of version 1.4 LTB Self Service Password depends on [Smarty](https://www.smarty.net).
+  This role installs Smarty using the distributions package manager or by downloading the latest upstream release.
+  In this case, this variable specifies the installation path for smarty.
+  Defaults to `/usr/local/share/php/smarty/`.
+  Ignored when installing a version of LTB Self Service Password older than 1.4 or when Smarty is known to be available from the target system's package manager.
 
 Example Playbook
 ----------------

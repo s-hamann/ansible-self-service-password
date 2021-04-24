@@ -3,6 +3,11 @@
 # {{ ansible_managed }}
 # configuration for Self Service Password version {{ ssp_version }}
 
+{% if ssp_smarty_include_path is defined %}
+# path to Smarty
+define('SMARTY', '{{ ssp_smarty_include_path }}');
+
+{% endif %}
 # connection to the LDAP server
 $ldap_url = '{{ [ssp_ldap_url] | flatten | join(' ') }}';
 $ldap_starttls = {{ ssp_ldap_starttls | bool }};
@@ -26,6 +31,8 @@ $who_change_password = 'user';
 $ad_mode = {{ ssp_ad_mode | bool }};
 $samba_mode = {{ ssp_samba_mode | bool }};
 
+$ldap_use_exop_passwd = {{ ssp_use_exop | bool | ternary('true', 'false') }};
+{% if not ssp_use_exop | bool %}
 {% if ssp_hash_passwords | bool %}
 # hash passwords using SHA-512 crypt before sending them to the directory
 $hash = 'CRYPT';
@@ -34,6 +41,7 @@ $hash_options['crypt_salt_length'] = '16';
 {% else %}
 # send unhashed passwords to the directory
 $hash = 'clear';
+{% endif %}
 {% endif %}
 
 # do not allow the user name as the password
@@ -44,11 +52,21 @@ $pwd_min_length = {{ ssp_password_length }};
 {% endif %}
 # do not set a maximum length
 $pwd_max_length = 0;
+# minimum character difference between old and new password
+$pwd_diff_last_min_chars = {{ ssp_min_diff }};
 {% if ssp_password_complexity is defined %}
 # require {{ ssp_password_complexity }} character classes
 $pwd_complexity = {{ ssp_password_complexity }};
 # do not accept special characters solely as the first or last character
 $pwd_no_special_at_ends = true;
+{% endif %}
+{% if ssp_forbidden_words | default([]) | count %}
+# block password that contain any of the following words
+$pwd_forbidded_words = array('{{ ssp_forbidden_words | map('regex_replace', '\\\\', '\\\\\\\\') | map('regex_replace', "'", "\\'") | join("', '") }}');
+{% endif %}
+{% if ssp_forbidden_fields | default([]) | count %}
+# block passwords that contain a value from any of these LDAP fields
+$pwd_forbidded_fields = array('{{ ssp_forbidden_fields | map('regex_replace', '\\\\', '\\\\\\\\') | map('regex_replace', "'", "\\'") | join("', '") }}');
 {% endif %}
 # {{ ssp_check_pwned | bool | ternary('', 'do not ') }}check if the password is in any public leaks
 $use_pwnedpasswords = {{ ssp_check_pwned | bool }};

@@ -10,7 +10,9 @@ ssp_sshkey_attribute: 'sshPublicKey'
 ssp_ad_mode: false
 ssp_samba_mode: false
 ssp_change_sshkey: false
+ssp_use_exop: false
 ssp_hash_passwords: false
+ssp_min_diff: 0
 ssp_check_pwned: true
 ssp_notify_user: false
 ssp_reset_email: false
@@ -18,3 +20,4 @@ ssp_reset_email_lifetime: 3600
 ssp_reset_sms: false
 ssp_sms_mail_subject: ''
 ssp_sms_api_config: {}
+ssp_smarty_path: '/usr/local/share/php/smarty/'
