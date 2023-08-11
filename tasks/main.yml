@@ -25,7 +25,7 @@
 
   - name: 'determine latest version of Self Service Password'
     set_fact:
-      ssp_version: "{{ _ltb_downloads.content | regex_findall('(?<=ltb-project-self-service-password-)[0-9.]+(?=\\.tar\\.gz)') | sort_versions | last }}"
+      ssp_version: "{{ _ltb_downloads.content | regex_findall('(?<=ltb-project-self-service-password-)[0-9.]+(?=\\.tar\\.gz)') | community.general.version_sort | last }}"
 
   when: "ssp_version is not defined"
 

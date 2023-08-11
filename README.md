@@ -15,6 +15,8 @@ If the LDAP service requires this, a proxy service should be used to locally pro
 Depending on the configuration, sending email may be required.
 In this case, the local `sendmail` command is used, which needs to be set up properly.
 
+This role requires the `community.general` Ansible collection.
+
 Role Variables
 --------------
 
