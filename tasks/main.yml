@@ -21,6 +21,7 @@
     uri:
       url: 'https://ltb-project.org/archives/'
       return_content: true
+    check_mode: false
     register: _ltb_downloads
 
   - name: 'determine latest version of Self Service Password'
@@ -43,6 +44,7 @@
       headers:
         Accept: 'application/vnd.github.v3+json'
       return_content: true
+    check_mode: false
     register: _smarty_release_info
 
   - name: 'set Smarty include path'
